@@ -1,144 +1,44 @@
 /*                                                                                
-Set up a menu system using a structure
+ Set up a menu system using a class 
 */
 
 
 // Include the LCD library
-#include <LiquidCrystal.h>
-
-
-//Function prototypes 
-void refreshScreen();
-void updateRowValue(byte menuRow);
-void updateCursor();
-void printArrow(byte screenRow);
-
-// initialize the LCD library with the numbers of the interface pins
-LiquidCrystal lcd(7, 8, 9,10, 11, 12);
-
-//The number of rows and columns on the display. 
-const byte lcdRows=4;
-const byte lcdCols=20;
+#include "LiquidCrystal.h"
+#include "settings.h"
+#include "Menu.h"
 
 
 
-//Stick position paramaters
-const short deadZone=20; //Make sure the stick is moved a good amount before ticks are added to the counter
-const short centre=515; //Value of stick in the centre
-
-
-//The pin to which the thumbstick button is connected
-const int buttonPin=13;
-
-//arrowPos is the line at which to draw the arrow in the first column of the LCD
-short arrowPos=0;
-
-//This is the row of the menu currently on row zero of the LCD
-byte currentTopRow=0;
-
-
-//Define up and down arrow symbols for indicating when there
-//are more menu items further up or down the page. 
-byte upArrow[8] = {
-  B00100,
-  B01010,
-  B10001,
-  B00100,
-  B01010,
-  B10001,
-  B00000,
-};
-
-byte downArrow[8] = {
-  B00000,
-  B10001,
-  B01010,
-  B00100,
-  B10001,
-  B01010,
-  B00100,
-};
-
-
-
-
-
-//Build menu using a structure
-// 27/02/2014 - I've not learned the C++ OO yet, so I will roll my own shitty "object" 
-// using pointers to functions to perform the button-press actions 
-// The linked list (which we use to switch between menus) is set up using function calls.
-// This allows us to generalise what happens when the button is pressed.
-
-struct Menu
-{
-  bool isVariable;
-  byte value; //Value displayed on screen. If this is a link to another menu, value is the number of entries in that menu
-  byte minVal; //minimum allowable value 
-  byte maxVal; //maximum allowable value
-  bool wrap; //if 1 we wrap from min to max value
-  byte menuStringLength; //length of menu string for this value 
-  char menuString[19]; //The menu string itself
-  void (*buttonFunction) (); 
-};
-
-//Prototypes for the button functions
-void toSettingsMenu();
-void toMainMenu();
-void wiper();
-
-//Define menu A
+//Define the settings menu
 const int settingsMenuLength=6;
-Menu settingsMenu[settingsMenuLength] =
-{
-  {1,  4, 1,  10, 1, 14, "Taste 1 Angle:"},
-  {1, 45, 1, 180, 1, 7,  "dAngle:"},
-  {1, 80, 2, 178, 0, 13, "Extended pos:"},
-  {1, 70, 2, 178, 0, 14, "Retracted pos:"},
-  {0,  0, 0,   0, 0,  4, "MAIN",toMainMenu}, //Value is number of rows in mainMenu
-  {0,  0, 0,   0, 0,  11, "Wipe for 3s",wiper} //Value is number of rows in mainMenu
-};
-//Assigns a meny to the menu* thisMenuPtr = settingsMenu;
-
+Menu settingsMenu[settingsMenuLength] ;
 Menu* thisMenuPtr = settingsMenu;
 byte nMenuRows=settingsMenuLength; //Number of entries in settingsMenu
 
-void toSettingsMenu(){
-   nMenuRows=settingsMenuLength;
-   thisMenuPtr=settingsMenu; //Switch to new menu
-   currentTopRow=0;
-   arrowPos=0;
-   refreshScreen();
-}
-
-void wiper(){
-  lcd.clear();
-  delay(3000);
-  refreshScreen();
-}
-
-//Define menu B
+//Define another menu (mainMenu) to link to as an example
 const int mainMenuLength=3;
-Menu mainMenu[mainMenuLength] =
-{
-  {1,  4, 1,  10, 1, 10, "Something:"},
-  {1,  4, 1,  10, 1, 10, "Something:"},
-  {0,  0, 0,   0, 0,  4, "BACK",toSettingsMenu} //Value is number of rows in settingsMenu
-};
-void toMainMenu(){
-   nMenuRows=mainMenuLength;
-   thisMenuPtr=mainMenu; //Switch to new menu
-   currentTopRow=0;
-   arrowPos=0;
-   refreshScreen();
-}
-
-
+Menu mainMenu[mainMenuLength];
 
 
 
 void setup() {
   Serial.begin(9600);          //  setup serial
   pinMode(buttonPin,INPUT);
+
+  //Define the settings menu
+  settingsMenu[0].setNumericMenu( 4, 1,  10, 1, "Taste 1 Angle:");
+  settingsMenu[1].setNumericMenu(45, 1, 180, 1, "dAngle:");
+  settingsMenu[2].setNumericMenu(80, 2, 178, 0, "Extended pos:");
+  settingsMenu[3].setNumericMenu(70, 2, 178, 0, "Retracted pos:");
+  settingsMenu[4].setActionMenu("To main menu",toMainMenu);
+  settingsMenu[5].setActionMenu("Wipe and re-draw",wiper);
+
+  //Define the mainMenu
+  mainMenu[0].setNumericMenu(4, 1,  10, 1, "Something:");
+  mainMenu[1].setNumericMenu(4, 1,  10, 1, "Something ELSE:");
+  mainMenu[2].setActionMenu("BACK",toSettingsMenu);
+
 
   // set up the LCD's number of columns and rows: 
   lcd.begin(lcdCols, lcdRows);
@@ -147,13 +47,13 @@ void setup() {
 
   //Bring up the menu
   refreshScreen();  
-  
+  /*
   Serial.println("Start debug");
   Serial.println(sizeof(thisMenuPtr));
   Serial.println(sizeof(thisMenuPtr[0]));
   Serial.println(sizeof(thisMenuPtr)/sizeof(thisMenuPtr[0]));
   Serial.println("End debug");
-
+*/
 }
 
 
@@ -228,27 +128,12 @@ void loop() {
 
       if (x>centre)
       {
-       thisMenuPtr[menuRow].value+=incrementBy;
+       thisMenuPtr[menuRow].incrementVal(incrementBy);
       } else if (x<centre){
-       thisMenuPtr[menuRow].value-=incrementBy;
+       thisMenuPtr[menuRow].incrementVal(-incrementBy);
       }
       
-      //Stay in bounds
-      if (thisMenuPtr[menuRow].value < thisMenuPtr[menuRow].minVal){
-        if (thisMenuPtr[menuRow].wrap){
-          thisMenuPtr[menuRow].value=thisMenuPtr[menuRow].maxVal;
-        } else {
-        thisMenuPtr[menuRow].value=thisMenuPtr[menuRow].minVal;
-        }
-      }
-
-      if (thisMenuPtr[menuRow].value > thisMenuPtr[menuRow].maxVal){
-        if (thisMenuPtr[menuRow].wrap){
-          thisMenuPtr[menuRow].value=thisMenuPtr[menuRow].minVal;
-        } else {
-        thisMenuPtr[menuRow].value=thisMenuPtr[menuRow].maxVal;
-        }
-      }
+     
      
 
       updateRowValue(menuRow);
@@ -264,28 +149,24 @@ void loop() {
     }//if (abs(delta_x)...
 
 
-
-    //Finally, check if button is pressed and, if so, move the appropriate axis
+    //Finally, check if button is pressed and, if so, run the appropriate function if this is possible
     if (digitalRead(buttonPin)==HIGH){
       if (!thisMenuPtr[menuRow].isVariable){
         thisMenuPtr[menuRow].buttonFunction();
       }
     } 
 
-
   } //if(currentVarMillis ...
   
+} //function loop
+
+
+
+
+
+//re-draw the whole screen
  
-}
-
-
-
-
-
-/*****
-re-draw the whole screen
- *****/
-void refreshScreen(){
+ void refreshScreen(){
 
  byte screenRow=0;
  for (byte menuRow=currentTopRow; menuRow<currentTopRow+lcdRows; menuRow++){
@@ -301,7 +182,6 @@ void refreshScreen(){
  }
 
 
-  
  updateCursor(); //The highlighted line
  
  //Add up or down arrows depending on where we are in the
@@ -322,12 +202,9 @@ void refreshScreen(){
 } //void refreshScreen
 
 
-/*****
-update the little arrow (cursor) as the user pushes the thumbstick
- *****/
+//update the little arrow (cursor) as the user pushes the thumbstick
 void updateCursor(){
  byte lastRow;
- void (*TEST)(byte) = printArrow;
 
  if (nMenuRows>lcdRows){
    lastRow=lcdRows;
@@ -388,7 +265,8 @@ void updateCursor(){
 void updateRowValue(byte menuRow){
    
    //Wipe the region of the row where the value will be placed
-   byte cursorPos=thisMenuPtr[menuRow].menuStringLength+1;
+   //byte cursorPos=thisMenuPtr[menuRow].menuStringLength+1;
+   byte cursorPos=thisMenuPtr[menuRow].menuStringLength();
    byte screenRow=menuRow-currentTopRow;
 
 
@@ -408,4 +286,28 @@ void updateRowValue(byte menuRow){
 void printArrow(byte screenRow){
    lcd.setCursor(0,screenRow);
    lcd.print(">");
+}
+
+
+//TEST STUFF BELOW
+void wiper(){
+  lcd.clear();
+  delay(3000);
+  refreshScreen();
+}
+
+void toMainMenu(){
+   nMenuRows=mainMenuLength;
+   thisMenuPtr=mainMenu; //Switch to new menu
+   currentTopRow=0;
+   arrowPos=0;
+   refreshScreen();
+}
+
+void toSettingsMenu(){
+   nMenuRows=settingsMenuLength;
+   thisMenuPtr=settingsMenu; //Switch to new menu
+   currentTopRow=0;
+   arrowPos=0;
+   refreshScreen();
 }
