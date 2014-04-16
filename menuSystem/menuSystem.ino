@@ -1,7 +1,25 @@
-
 /*                                                                                
- Set up a menu system using two classes: one for the menu system and one for 
- the menu data
+  menuSystem.ino
+
+ This is an example of how to build an interactive menu system using an Arduino,
+ a thumbstick, and a LCD character display.
+
+ Each row displays a variable name as a string and a value as an integer. 
+ The user selects the desired row by pushing the stick up or down and 
+ sets the value of the integer by pushing the stick left or right. The user
+ builds the menu system using a class. The user sets an initial value, max, 
+ and min for each row. In addition, the user state if the values should wrap 
+ around. The display increments by 10s, 100s, etc, automatically as needed. 
+
+ Rows can also be linked a function that returns void. Such rows do not have 
+ a numeric value associated with them. This allows the user to do things such as
+ build linked lists of menus, or execute other arbitrary commands via the menu
+ system. 
+
+ The menu is built with a single class that encapsulates the menu data as a 
+ structure, which is a property of they class. 
+
+ Rob Campbell 2014
 */
 
 
@@ -27,7 +45,7 @@ void setup() {
 
   Serial.begin(9600);          //  setup serial
 
-  //Define the settings menu
+  //Define the settings menu in an array of Menu
   settingsMenu[0].setNumericMenu( 4, 1,  10, 1, "Taste 1 Angle:");
   settingsMenu[1].setNumericMenu(45, 1, 15000, 1, "dAngle:");
   settingsMenu[2].setNumericMenu(80, 2, 178, 0, "Extended pos:");
