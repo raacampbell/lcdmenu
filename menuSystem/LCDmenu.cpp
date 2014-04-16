@@ -121,6 +121,8 @@ long menuDisplay::poll(){
    //Wait before updating
    waitTime = _centre-abs(delta_y);
    waitTime = 150 + (waitTime / (2.0 * _centre)) * 1000.0; //Never faster than 100ms
+
+   _currentMenuRow = _arrowPos + _currentTopRow; //Keep track of the currently selected row
   }//if (abs(delta_y)...
 
 
@@ -199,7 +201,6 @@ long menuDisplay::poll(){
 
 //re-draw the whole screen
 void menuDisplay::refreshScreen(){
-  //  int nMenuRows=3; // FIX THIS HACK!!!!
 
  byte screenRow=0;
  for (byte menuRow=_currentTopRow; menuRow<_currentTopRow+_lcdRows; menuRow++){
@@ -231,7 +232,6 @@ void menuDisplay::refreshScreen(){
    lcd->write(byte(1));
  }
 
- 
 } //void refreshScreen
 
 
@@ -326,7 +326,9 @@ void menuDisplay::printArrow(){
 }
 
 
-
+short menuDisplay::getValue(){
+  return currentMenu[_currentMenuRow].value;
+}
 
 
 

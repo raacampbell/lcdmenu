@@ -60,18 +60,20 @@ class menuDisplay
   public:    
   Menu* currentMenu;
   int nMenuRows;
-
+  
   menuDisplay(LiquidCrystal* thisLCD, byte lcdRows, byte lcdCols, int buttonPin, int xLine, int yLine); 
   void initDisplay();
   void changeMenu(Menu newMenu[], int nRows);    
   long poll();
   void refreshScreen();
+  short getValue();
+  
   static LiquidCrystal* lcd;   
 
   private:
   byte _lcdRows;  //character rows on the LCD display
   byte _lcdCols;  //character columns on the LCD display
-
+  byte _currentMenuRow; //The currently selected row in the menu system. 
 
 
 
