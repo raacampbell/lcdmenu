@@ -8,80 +8,95 @@
  The user selects the desired row by pushing the stick up or down and 
  sets the value of the integer by pushing the stick left or right. The user
  builds the menu system using a class. The user sets an initial value, max, 
- and min for each row. In addition, the user state if the values should wrap 
+ and min for each row. In addition, the user defines if the values should wrap 
  around. The display increments by 10s, 100s, etc, automatically as needed. 
 
- Rows can also be linked a function that returns void. Such rows do not have 
+ A menue row can also be linked a function that returns void. Such rows do not have 
  a numeric value associated with them. This allows the user to do things such as
  build linked lists of menus, or execute other arbitrary commands via the menu
  system. 
-
- The menu is built with a single class that encapsulates the menu data as a 
- structure, which is a property of they class. 
 
  Rob Campbell 2014
 */
 
 
-// Include the LCD library
 #include "LiquidCrystal.h"
 #include "LCDmenu.h"
 
 
+static LiquidCrystal this_lcd(7, 8, 9, 10, 11, 12); //Edit this line for you wiring settings
 
-//Define the settings menu
-const int settingsMenuLength=7;
-Menu settingsMenu[settingsMenuLength] ;
+//Define the LCD size and and the pins the listen to the thumb stick
+const int lcdRows=4;  //Number of rows on the LCD character display
+const int lcdCols=20; //Number of columns on the LCD character display
+const int tStickButton=13;
+const int tStickXPin=0;
+const int tStickYPin=1;
 
-//Define another menu (mainMenu) to link to as an example
+
+//Define an instance of the menuDisplay class, which will be responsible for 
+//controlling most functions of the menu system
+menuDisplay myDisplay(&this_lcd,lcdRows,lcdCols,tStickButton,tStickXPin,tStickYPin);
+
+
+
+
+//Declare two instances of class Menu, which will house the menus that will be displayed
+//The first class has 7 rows and the second has three rows. 
+const int settingsMenuLength=7; //The number of rows in the menu
+Menu settingsMenu[settingsMenuLength];
+
 const int mainMenuLength=3;
-Menu mainMenu[mainMenuLength];
+Menu mainMenu[mainMenuLength]; //Define another menu to link to as an example
 
 
-menuDisplay myDisplay(4,20,13,0,1); //lcdRows, lcdCols, thumbStick pin, x pin, y pin
+
 
 
 void setup() {
 
-  Serial.begin(9600);          //  setup serial
 
-  //Define the settings menu in an array of Menu
-  settingsMenu[0].setNumericMenu( 4, 1,  10, 1, "Taste 1 Angle:");
-  settingsMenu[1].setNumericMenu(45, 1, 15000, 1, "dAngle:");
+  //Define the settings menu, which is an array of class Menu. The order 
+  //of the input arguments is: 
+  // 1. displayed value [short] 
+  // 2. minimum value [short]
+  // 3. maximum value [short]
+  // 4. wrap or not [bool]
+  // 5. name of row printed to LCD display [String]
+  settingsMenu[0].setNumericMenu( 4, 1,  10, 1, "A small number:");
+  settingsMenu[1].setNumericMenu(45, 1,1000, 1, "A big number:");
   settingsMenu[2].setNumericMenu(80, 2, 178, 0, "Extended pos:");
   settingsMenu[3].setNumericMenu(70, 2, 178, 0, "Retracted pos:");
-  settingsMenu[4].setNumericMenu(70, 2, 178, 0, "RETRACTED pos:");
-  settingsMenu[5].setActionMenu("To main menu",toMainMenu);
-  settingsMenu[6].setActionMenu("Wipe and re-draw",wiper);
+  settingsMenu[4].setNumericMenu(70, 2, 178, 0, "Turnips:");
+  settingsMenu[5].setActionMenu("To main menu",toMainMenu); //executes toMainMenu() when button is pressed
+  settingsMenu[6].setActionMenu("Wipe and re-draw",wiper);  //executes wiper() when button is pressed
   
   //Define the mainMenu
-  mainMenu[0].setNumericMenu(4, 1,  10, 1, "Something:");
-  mainMenu[1].setNumericMenu(4, 1,  10, 1, "Something ELSE:");
-  mainMenu[2].setActionMenu("BACK",toSettingsMenu);
+  mainMenu[0].setNumericMenu(4, 1,  10, 1, "Poplar:");
+  mainMenu[1].setNumericMenu(4, 1,  10, 1, "Willow:");
+  mainMenu[2].setActionMenu("BACK",toSettingsMenu); //executes toSettingsMenu() when button is pressed
 
 
-  //Initialise display and set menu
+
+  //Initialise the display and bring up the default menu
   myDisplay.initDisplay();
   myDisplay.changeMenu(settingsMenu,settingsMenuLength);
 
-}
+} //function setup()
 
 
 
 void loop() {
-  //Following variables are "wait-without-delay" counters for listening to the 
-  //thumbstick. 
+  //wait-without-delay counters for listening to the thumbstick. 
   static long varInterval=25; 
   static unsigned long currentVarMillis;
   static long previousVarMillis=0;
 
   currentVarMillis=millis();
-  if(currentVarMillis - previousVarMillis > varInterval) {  
+  if (currentVarMillis - previousVarMillis > varInterval) {  
     previousVarMillis=currentVarMillis; //save update time
-        
     myDisplay.poll();
-  } //if(currentVarMillis ...
-
+  } //if (currentVarMillis 
 
 } //function loop
 
@@ -91,7 +106,10 @@ void loop() {
 
 
 
-//TEST STUFF BELOW
+//------------------------------------------------------------------------------
+
+//This example function wipes the screen, pauses, then re-draws the screen. 
+//It is executed on a button press when the appropriate menu row is highlighted
 void wiper(){
   myDisplay.lcd->clear();
   delay(3000);
@@ -99,6 +117,7 @@ void wiper(){
 }
 
 
+//The following functions are executed on button press and used to switch menus
 void toMainMenu(){
    myDisplay.changeMenu(mainMenu,mainMenuLength);
    

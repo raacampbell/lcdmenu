@@ -1,11 +1,12 @@
 
 /*
-  Menu.cpp - Library for building LCD menu
+  Menu.cpp - Library for building LCD menus
 */
 
-#include "Arduino.h"
 #include "LCDmenu.h"
 
+
+LiquidCrystal* menuDisplay::lcd ; //If this isn't here, the display doesn't work for some reason
 
 //Initialise static const arrays for the special characters
 //http://stackoverflow.com/questions/11367141/how-to-declare-and-initialize-a-static-const-array-as-a-class-member
@@ -31,13 +32,8 @@
 
 
 
-
-
-static LiquidCrystal this_lcd(7, 8, 9, 10, 11, 12); //EDIT THIS LINE FOR YOUR WIRING SETTINGS
-LiquidCrystal* menuDisplay::lcd = &this_lcd;
-
-
-menuDisplay::menuDisplay(byte lcdRows, byte lcdCols, int buttonPin, int xLine, int yLine)
+//Constructor
+menuDisplay::menuDisplay(LiquidCrystal* thisLCD, byte lcdRows, byte lcdCols, int buttonPin, int xLine, int yLine)
 {
   _lcdRows=lcdRows;
   _lcdCols=lcdCols;
@@ -58,8 +54,11 @@ menuDisplay::menuDisplay(byte lcdRows, byte lcdCols, int buttonPin, int xLine, i
   _lastIncremented=0; //Was the variable incremented in the last pass?
   _incrementBy=1;
 
+  lcd=thisLCD;
 }
 
+
+//Initialise the display 
 void menuDisplay::initDisplay()
 {
 
@@ -73,16 +72,24 @@ void menuDisplay::initDisplay()
 
 }
 
+
+//Change the on-screen menu, refresh the screen
 void menuDisplay::changeMenu(Menu newMenu[], int nRows){
   currentMenu=newMenu;
   nMenuRows=nRows;
   _currentTopRow=0;
   _arrowPos=0;
+
+  //update variables within newMenu
+  for (int ii=0; ii<nRows; ii++){
+    newMenu[ii].setVars(_lcdRows, _lcdCols);
+  }
   refreshScreen();
 }
 
 
-
+//Poll the stick position and update screen appropriately. 
+//This is the main workhorse function
 long menuDisplay::poll(){
  
   //Read the X and Y directions of the stick
@@ -120,6 +127,8 @@ long menuDisplay::poll(){
   //Allow updates of the values on the current row
   byte menuRow=_arrowPos+_currentTopRow; //The menu row (allows for scrolling)
 
+  //If we've cycled through at least 4 numbers squentially and we're on a 
+  //multiple of the next increment rate then increase increment rate to this new rate
   if (abs(delta_x)>_deadZone)
   {
 
@@ -133,9 +142,17 @@ long menuDisplay::poll(){
 
     if (x>_centre)
     {
-     currentMenu[menuRow].incrementVal(_incrementBy);
+     short incrementBy=currentMenu[menuRow].incrementVal(-1 * _incrementBy);
+     if (incrementBy != _incrementBy){ //Then it's wrapped
+      _incrementBy=incrementBy;
+      _numIncrements=1;
+     }
     } else if (x<_centre){
-     currentMenu[menuRow].incrementVal(-1 * _incrementBy);
+     short incrementBy=currentMenu[menuRow].incrementVal(_incrementBy);
+     if (incrementBy != _incrementBy){ //Then it's wrapped
+      _incrementBy=incrementBy;
+      _numIncrements=1;
+     }
     }
       
     updateRowValue(menuRow);
@@ -319,9 +336,7 @@ void menuDisplay::printArrow(){
 //----------------------------------------------------------------------
 // CLASS MENU FOLLOWS
 Menu::Menu(){
-
 }
-
 
 
 void Menu::setNumericMenu(short val,short minVal,short maxVal,bool wrap,String menuStr)
@@ -341,13 +356,19 @@ void Menu::setActionMenu(String menuStr, void (*funct)() )
 	buttonFunction=funct;
 }
 
+void Menu::setVars(byte lcdRows, byte lcdCols )
+{
+  _lcdRows=lcdRows;
+  _lcdCols=lcdCols;
+}
+
 
 /**
 Chops off the end of the menu string if it's too long given the number of characters
 taken up by the value. Displaying the value takes priority over displaying the menustring 
 */
 String Menu::menuString(){
-  int usableCols=18; //HACK UNTIL I FIGURE OUT HOW TO GET THE CLASSES TO TALK 
+  int usableCols=_lcdCols-2; 
   int maxDigits=ceil(log10(_maxVal));
 
   int maxStringLength = usableCols - maxDigits-1;
@@ -361,15 +382,14 @@ String Menu::menuString(){
 }
 
 //Increment value whilst staying in bounds. 
-void Menu::incrementVal(short incrementBy){
-  //LIKELY THIS NEEDS TO BE ABLE TO TALK BACK TO THE menuDisplay CLASS IN ORDER
-  //TO: A) SET _incrementBy TO 1 WHEN IT WRAPS. B) NOT ALLOW IT TO, SAY, INCREMENT BY 100
-  //IF value IS ONLY 100 AWAY FROM IT'S LIMIT VALUE. 
-    value += incrementBy;
+short Menu::incrementVal(short incrementBy){
+
+     value += incrementBy;
 
     if (value < _minVal){
       if (_wrap){
         value = _maxVal;        
+        incrementBy=-1;
       } else {
         value = _minVal;
       }
@@ -378,10 +398,13 @@ void Menu::incrementVal(short incrementBy){
     if (value > _maxVal){
       if (_wrap){
         value = _minVal;
+        incrementBy=1;
       } else {
        value = _maxVal;
       }
     }
+
+    return abs(incrementBy);
 }
 
 byte Menu::menuStringLength(){

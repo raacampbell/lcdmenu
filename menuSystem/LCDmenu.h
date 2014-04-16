@@ -30,15 +30,18 @@ class Menu
     bool isVariable;
     short value; //Value displayed on screen.
     String menuString();
-    void (*buttonFunction) (); 
-
+    void (*buttonFunction) (); //Used to execute any arbitrary function that returns void
+    
     Menu();
     void setNumericMenu(short val,short minVal,short maxVal,bool wrap,String menuStr);
     void setActionMenu(String menuStr, void (*funct)() ); //Can link to any function that returns void
-    void incrementVal(short incrementBy);
+    short incrementVal(short incrementBy);
+    void setVars(byte lcdRows, byte lcdCols);
     byte menuStringLength();
 
   private:
+    byte _lcdRows;  //character rows on the LCD display
+    byte _lcdCols;  //character columns on the LCD display
     short _minVal; //minimum allowable value 
     short _maxVal; //maximum allowable value
     bool _wrap;   //if 1 we wrap from min to max value
@@ -58,16 +61,19 @@ class menuDisplay
   Menu* currentMenu;
   int nMenuRows;
 
-  menuDisplay(byte lcdRows, byte lcdCols, int buttonPin, int xLine, int yLine); 
+  menuDisplay(LiquidCrystal* thisLCD, byte lcdRows, byte lcdCols, int buttonPin, int xLine, int yLine); 
   void initDisplay();
   void changeMenu(Menu newMenu[], int nRows);    
   long poll();
   void refreshScreen();
-  static LiquidCrystal* lcd;
+  static LiquidCrystal* lcd;   
 
   private:
   byte _lcdRows;  //character rows on the LCD display
   byte _lcdCols;  //character columns on the LCD display
+
+
+
 
   short _arrowPos;     //Line at which to draw the arrow in the first column of the LCD
   byte _currentTopRow; //Row of the menu currently on row zero of the LCD
@@ -98,6 +104,8 @@ class menuDisplay
   void updateCursor();
   void updateRowValue(byte menuRow);
   void printArrow();
+
+
 };
 
 
