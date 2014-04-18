@@ -104,6 +104,7 @@ void setup() {
 
 
 void loop() {
+  bool sendSerial=0; //optionally send info over serial port
   static short lastVal=myDisplay.getValue(); 
 
   //wait-without-delay counters for listening to the thumbstick. 
@@ -119,8 +120,10 @@ void loop() {
     
     //Perform following actions only on value-change
     if (lastVal != myDisplay.getValue()){
-      //Write to serial port
-      Serial.println(myDisplay.getValue());
+      if (sendSerial){
+        //Write to serial port
+        Serial.println(myDisplay.getValue());
+      }
       lastVal=myDisplay.getValue();
       //Add an asterisk to the SAVE menu if a value has been changed so it differs from the
       //stored values 
@@ -196,7 +199,7 @@ void load(){
   settingsMenu[loadIndex].setMenuString("");
   settingsMenu[saveIndex].setMenuString("SAVE"); //In case there was an asterisk
   myDisplay.refreshScreen();
-  delay(400);
+  delay(250);
   settingsMenu[loadIndex].setMenuString("LOAD");
   myDisplay.refreshScreen();
 
