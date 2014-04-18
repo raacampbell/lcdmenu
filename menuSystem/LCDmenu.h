@@ -29,7 +29,8 @@ class Menu
   public:
     bool isVariable;
     short value; //Value displayed on screen.
-    String menuString();
+    byte lastValue; //prior value following a value change. This is useful for determine LCD behavior in some situations
+    String menuString(); //Returns the formatted menu string 
     void (*buttonFunction) (); //Used to execute any arbitrary function that returns void
     
     Menu();
