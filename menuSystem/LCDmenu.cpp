@@ -183,6 +183,11 @@ long menuDisplay::poll(){
 
   //Finally, check if button is pressed and, if so, run the appropriate function if this is possible
   if (digitalRead(_buttonPin)==HIGH){
+    //Debounce the button
+    const byte debounce=10; // in ms
+    byte lasttime=millis();
+    while ( (lasttime+=millis()) < debounce ){ }
+      
     if (!currentMenu[menuRow].isVariable){
       currentMenu[menuRow].buttonFunction();
     }
