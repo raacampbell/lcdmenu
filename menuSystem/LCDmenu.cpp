@@ -41,7 +41,7 @@ menuDisplay::menuDisplay(LiquidCrystal* thisLCD, byte lcdRows, byte lcdCols, int
   _xLine=xLine;
   _yLine=yLine;
   _buttonPressed=0;
-  
+
   _arrowPos=0; //arrowPos is the line at which to draw the arrow in the first column of the LCD
   _currentTopRow=0; //This is the row of the menu currently on row zero of the LCD
   
@@ -463,10 +463,16 @@ void Menu::setValue(short VAL){
 
 void Menu::setMax(short VAL){
   _maxVal=VAL;
+  if (value>_maxVal){
+    value=_maxVal;
+  }
 }
 
 void Menu::setMin(short VAL){
   _minVal=VAL;
+  if (value<_minVal){
+    value=_minVal;
+  }
 }
 
 

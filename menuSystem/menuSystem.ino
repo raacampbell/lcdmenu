@@ -25,9 +25,6 @@
 #include <avr/eeprom.h> //http://playground.arduino.cc/Code/EEPROMWriteAnything
 
 
-
-
-
 static LiquidCrystal this_lcd(7, 8, 9, 10, 11, 12); //Edit this line for you wiring settings
 
 //Define the LCD size and and the pins the listen to the thumb stick
