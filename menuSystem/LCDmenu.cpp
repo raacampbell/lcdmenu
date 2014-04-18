@@ -166,7 +166,7 @@ long menuDisplay::poll(){
 
     //Apply wait
     waitTime = _centre-abs(delta_x);
-    waitTime = 150 + (waitTime / (2.0 * _centre)) * 1000.0; //Never faster than 100ms
+    waitTime = 175 + (waitTime / (2.0 * _centre)) * 1000.0; //Never faster than 175ms
      
     if (_lastIncremented){
      _numIncrements++;
