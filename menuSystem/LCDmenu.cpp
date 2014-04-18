@@ -145,19 +145,22 @@ long menuDisplay::poll(){
     if (x>_centre)
     {
      short incrementBy=currentMenu[menuRow].incrementVal(-1 * _incrementBy);
-     if (incrementBy != _incrementBy){ //Then it's wrapped
+     if (incrementBy != _incrementBy){ //Then the numbers wrapped and we want to reset the incrementing
       _incrementBy=incrementBy;
       _numIncrements=1;
      }
     } else if (x<_centre){
      short incrementBy=currentMenu[menuRow].incrementVal(_incrementBy);
-     if (incrementBy != _incrementBy){ //Then it's wrapped
+     if (incrementBy != _incrementBy){ //Then the numbers wrapped and we want to reset the incrementing
       _incrementBy=incrementBy;
       _numIncrements=1;
      }
     }
-      
-    updateRowValue(menuRow);
+ 
+    //Only updating the screen if the value has changed is neater. The value will not "flash"
+    if (currentMenu[menuRow].value != currentMenu[menuRow].lastValue){
+      updateRowValue(menuRow);
+    } 
       
 
     //Apply wait
@@ -386,7 +389,8 @@ String Menu::menuString(){
 //Increment value whilst staying in bounds. 
 short Menu::incrementVal(short incrementBy){
 
-     value += incrementBy;
+    lastValue=value;
+    value += incrementBy;
 
     if (value < _minVal){
       if (_wrap){
