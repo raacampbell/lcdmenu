@@ -25,6 +25,9 @@
 #include <avr/eeprom.h> //http://playground.arduino.cc/Code/EEPROMWriteAnything
 
 
+
+
+
 static LiquidCrystal this_lcd(7, 8, 9, 10, 11, 12); //Edit this line for you wiring settings
 
 //Define the LCD size and and the pins the listen to the thumb stick
@@ -166,18 +169,21 @@ void toStatusMenu(){
    myDisplay.changeMenu(statusMenu,statusMenuLength);
    
 }
+void toSettingsMenu(){
+   myDisplay.changeMenu(settingsMenu,settingsMenuLength);
+}
 
 
+//Sets value, max, and min values to the same number. This is used to construct a 
+//a menu row that is not modifiable
 void updateFixedMenu(Menu *thisMenuRow, short val){
   thisMenuRow->setValue(val);
   thisMenuRow->setMax(val);
   thisMenuRow->setMin(val);
   }
 
-void toSettingsMenu(){
-   myDisplay.changeMenu(settingsMenu,settingsMenuLength);
-}
 
+//Save settings to EEPROM
 void save(){
  for (byte ii=0; ii<5; ii++){
     values[ii]=settingsMenu[ii].value;
@@ -187,9 +193,11 @@ void save(){
   myDisplay.refreshScreen();
 }
 
-
+//Load settings from EEPROM
 void load(){
-  eeprom_read_block((void*)&values, (void*)0, sizeof(values));
+ // void eeprom_read_block(void *  __dst, const void * __src, size_t __n )
+ // Read a block of __n bytes from EEPROM address __src to SRAM __dst.
+ eeprom_read_block((void*)&values, (void*)0, sizeof(values));
   for (byte ii=0; ii<5; ii++){
     settingsMenu[ii].setValue(values[ii]);
   }
@@ -206,6 +214,8 @@ void load(){
 }
 
 
+
+//Update the "SAVE" menu row to add an asterisk when any any saved setting has been changed. 
 void updateSAVE(){
 
   //Assumes all values are at start of settingsMenu
