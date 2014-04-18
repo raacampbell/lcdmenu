@@ -40,7 +40,8 @@ menuDisplay::menuDisplay(LiquidCrystal* thisLCD, byte lcdRows, byte lcdCols, int
   _buttonPin=buttonPin;
   _xLine=xLine;
   _yLine=yLine;
-
+  _buttonPressed=0;
+  
   _arrowPos=0; //arrowPos is the line at which to draw the arrow in the first column of the LCD
   _currentTopRow=0; //This is the row of the menu currently on row zero of the LCD
   
@@ -53,7 +54,7 @@ menuDisplay::menuDisplay(LiquidCrystal* thisLCD, byte lcdRows, byte lcdCols, int
   _numIncrements=0; //The number of continuous increments 
   _lastIncremented=0; //Was the variable incremented in the last pass?
   _incrementBy=1;
-
+  
   lcd=thisLCD;
 }
 
@@ -182,17 +183,20 @@ long menuDisplay::poll(){
   }//if (abs(delta_x)...
 
   //Finally, check if button is pressed and, if so, run the appropriate function if this is possible
-  if (digitalRead(_buttonPin)==HIGH){
+  if (digitalRead(_buttonPin)==HIGH && !_buttonPressed){
     //Debounce the button
     const byte debounce=10; // in ms
     byte lasttime=millis();
     while ( (lasttime+=millis()) < debounce ){ }
-      
+
     if (!currentMenu[menuRow].isVariable){
       currentMenu[menuRow].buttonFunction();
     }
+    _buttonPressed=1;
   } 
-
+  if (digitalRead(_buttonPin)==LOW){
+    _buttonPressed=0;
+  }
   
   if (waitTime>0){
     long currentMillis = millis();

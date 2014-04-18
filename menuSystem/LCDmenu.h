@@ -80,7 +80,7 @@ class menuDisplay
   byte _lcdRows;  //character rows on the LCD display
   byte _lcdCols;  //character columns on the LCD display
   byte _currentMenuRow; //The currently selected row in the menu system. 
-
+  bool _buttonPressed; //1 if button is currently being pressed
 
 
   short _arrowPos;     //Line at which to draw the arrow in the first column of the LCD
