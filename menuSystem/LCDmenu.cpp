@@ -305,17 +305,27 @@ void menuDisplay::updateRowValue(byte menuRow){
    //byte cursorPos=currentMenu[menuRow].menuStringLength+1;
    byte cursorPos=currentMenu[menuRow].menuStringLength();
    byte screenRow=menuRow-_currentTopRow;
+   short val=currentMenu[menuRow].value;
 
-
-   for (byte ii=cursorPos; ii<=_lcdCols-2; ii++){
+  if (currentMenu[menuRow].isVariable){ //Replace value
+     lcd->setCursor(cursorPos,screenRow); 
+     lcd->print(val);  
+     //Make sure cursor starts AFTER the end of the displayed value
+     if (val==0){
+      val++;
+     }
+     cursorPos+=ceil(log10(abs(val)+1)); 
+     if (val<0){
+      cursorPos++;
+     }
+  }
+ 
+  //Wipe what's left of the row 
+  for (byte ii=cursorPos; ii<=_lcdCols-2; ii++){
     lcd->setCursor(ii,screenRow); 
     lcd->print(" ");  
-   }
-   
-   if (currentMenu[menuRow].isVariable){
-     lcd->setCursor(cursorPos,screenRow); 
-     lcd->print(currentMenu[menuRow].value);  
-   }
+  }
+ 
 
 } //void updateRowValue
 
@@ -373,8 +383,27 @@ Chops off the end of the menu string if it's too long given the number of charac
 taken up by the value. Displaying the value takes priority over displaying the menustring 
 */
 String Menu::menuString(){
-  int usableCols=_lcdCols-2; 
-  int maxDigits=ceil(log10(_maxVal));
+  byte usableCols=_lcdCols-2; 
+
+  //Find the maximum number of digits (including minus sign for negative numbers)
+  short maxVal=_maxVal;
+  short minVal=_minVal;
+
+  if (maxVal==0){ maxVal++; } //cope with zero
+  if (minVal==0){ minVal++; } //cope with zero
+
+  byte maxChars=ceil(log10(abs(minVal)+1));
+  byte minChars=ceil(log10(abs(maxVal)+1));
+
+  if (_maxVal<0){ maxChars++; }
+  if (_minVal<0){ minChars++; }
+
+  byte maxDigits;
+  if (maxChars>minChars){
+    maxDigits=maxChars;
+  } else {
+    maxDigits=minChars;
+  }
 
   int maxStringLength = usableCols - maxDigits-1;
   String tmpStr = _menuString;
