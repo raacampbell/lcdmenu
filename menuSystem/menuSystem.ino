@@ -22,6 +22,7 @@
 
 #include "LiquidCrystal.h"
 #include "LCDmenu.h"
+#include <avr/eeprom.h> //http://playground.arduino.cc/Code/EEPROMWriteAnything
 
 
 static LiquidCrystal this_lcd(7, 8, 9, 10, 11, 12); //Edit this line for you wiring settings
@@ -42,20 +43,29 @@ menuDisplay myDisplay(&this_lcd,lcdRows,lcdCols,tStickButton,tStickXPin,tStickYP
 
 
 //Declare two instances of class Menu, which will house the menus that will be displayed
-//The first class has 7 rows and the second has three rows. 
-const int settingsMenuLength=7; //The number of rows in the menu
+//The first class has 9 rows and the second has three rows. 
+const int settingsMenuLength=9; //The number of rows in the menu
 Menu settingsMenu[settingsMenuLength];
+byte saveIndex=6; //Index of row containing "SAVE" menu
+byte loadIndex=7; //Index of row containing "LOAD" menu
 
-const int mainMenuLength=3;
-Menu mainMenu[mainMenuLength]; //Define another menu to link to as an example
+//Define another menu to link to. This will contain some entries that just
+//reflect values chosen in settingsMenu
+const int statusMenuLength=4;
+Menu statusMenu[statusMenuLength]; 
 
+
+//We will have the ability to load the values of settingsMenu from the EEPROM
+const byte lengthValues=5;
+short values[lengthValues]={0,0,0,0,0};
 
 
 
 
 void setup() {
 
-
+  Serial.begin(115200);
+  
   //Define the settings menu, which is an array of class Menu. The order 
   //of the input arguments is: 
   // 1. displayed value [short] 
@@ -63,18 +73,25 @@ void setup() {
   // 3. maximum value [short]
   // 4. wrap or not [bool]
   // 5. name of row printed to LCD display [String]
-  settingsMenu[0].setNumericMenu( 4, 1,  10, 1, "A small number:");
-  settingsMenu[1].setNumericMenu(45, 1,1000, 1, "A big number:");
-  settingsMenu[2].setNumericMenu(80, 2, 178, 0, "Extended pos:");
-  settingsMenu[3].setNumericMenu(70, 2, 178, 0, "Retracted pos:");
-  settingsMenu[4].setNumericMenu(70, 2, 178, 0, "Turnips:");
-  settingsMenu[5].setActionMenu("To main menu",toMainMenu); //executes toMainMenu() when button is pressed
-  settingsMenu[6].setActionMenu("Wipe and re-draw",wiper);  //executes wiper() when button is pressed
-  
-  //Define the mainMenu
-  mainMenu[0].setNumericMenu(4, 1,  10, 1, "Poplar:");
-  mainMenu[1].setNumericMenu(4, 1,  10, 1, "Willow:");
-  mainMenu[2].setActionMenu("BACK",toSettingsMenu); //executes toSettingsMenu() when button is pressed
+  settingsMenu[0].setNumericMenu(values[0], 1,  10, 1, "Setting A:");
+  settingsMenu[1].setNumericMenu(values[1], 1,1000, 1, "Setting B:");
+  settingsMenu[2].setNumericMenu(values[2], 2, 178, 0, "Extended pos:");
+  settingsMenu[3].setNumericMenu(values[3], 2, 178, 0, "Retracted pos:");
+  settingsMenu[4].setNumericMenu(values[4], 2, 178, 0, "Turnips:");
+  settingsMenu[5].setActionMenu("To status menu",toStatusMenu); //executes toMainMenu() when button is pressed
+  settingsMenu[saveIndex].setActionMenu("SAVE",save);
+  settingsMenu[loadIndex].setActionMenu("LOAD",load);
+  settingsMenu[8].setActionMenu("Wipe and re-draw",wiper);  //executes wiper() when button is pressed
+
+
+  //Define the statusMenu
+  //The first two rows are automically set to what the user selected in the
+  //settings menu. These numbers can't be modified from within this menu. The
+  //code that performs this is located in this function, not in the library. 
+  statusMenu[0].setNumericMenu(0, 0, 0, 1, "A:");
+  statusMenu[1].setNumericMenu(0, 0, 0, 1, "B:");
+  statusMenu[2].setNumericMenu(79, 0, 99, 1, "This changes:");
+  statusMenu[3].setActionMenu("BACK",toSettingsMenu); //executes toSettingsMenu() when button is pressed
 
 
 
@@ -87,6 +104,8 @@ void setup() {
 
 
 void loop() {
+  static short lastVal=myDisplay.getValue(); 
+
   //wait-without-delay counters for listening to the thumbstick. 
   static long varInterval=25; 
   static unsigned long currentVarMillis;
@@ -96,9 +115,31 @@ void loop() {
   if (currentVarMillis - previousVarMillis > varInterval) {  
     previousVarMillis=currentVarMillis; //save update time
     myDisplay.poll();
+    
+    
+    //Perform following actions only on value-change
+    if (lastVal != myDisplay.getValue()){
+      //Write to serial port
+      Serial.println(myDisplay.getValue());
+      lastVal=myDisplay.getValue();
+      //Add an asterisk to the SAVE menu if a value has been changed so it differs from the
+      //stored values 
+      updateSAVE();
+      myDisplay.refreshScreen();
+    }
+
+
+    //Keep the fixed values in status menu updated
+    updateFixedMenu(&statusMenu[0],settingsMenu[0].value);
+    updateFixedMenu(&statusMenu[1],settingsMenu[1].value);
+
   } //if (currentVarMillis 
 
+  //Display current value to serial terminal when it's changed
+  
 } //function loop
+
+
 
 
 
@@ -112,18 +153,71 @@ void loop() {
 //It is executed on a button press when the appropriate menu row is highlighted
 void wiper(){
   myDisplay.lcd->clear();
-  delay(3000);
+  delay(1000);
   myDisplay.refreshScreen();
 }
 
 
 //The following functions are executed on button press and used to switch menus
-void toMainMenu(){
-   myDisplay.changeMenu(mainMenu,mainMenuLength);
+void toStatusMenu(){
+   myDisplay.changeMenu(statusMenu,statusMenuLength);
    
 }
+
+
+void updateFixedMenu(Menu *thisMenuRow, short val){
+  thisMenuRow->setValue(val);
+  thisMenuRow->setMax(val);
+  thisMenuRow->setMin(val);
+  }
 
 void toSettingsMenu(){
    myDisplay.changeMenu(settingsMenu,settingsMenuLength);
 }
 
+void save(){
+ for (byte ii=0; ii<5; ii++){
+    values[ii]=settingsMenu[ii].value;
+  }
+  eeprom_write_block((const void*)&values, (void*)0, sizeof(values));
+  settingsMenu[saveIndex].setMenuString("SAVE"); //In case there was an asterisk
+  myDisplay.refreshScreen();
+}
+
+
+void load(){
+  eeprom_read_block((void*)&values, (void*)0, sizeof(values));
+  for (byte ii=0; ii<5; ii++){
+    settingsMenu[ii].setValue(values[ii]);
+  }
+  
+  //Provide a visual indicator that we've loaded the menu
+  //(side effect of refreshing screen with new values)
+  settingsMenu[loadIndex].setMenuString("");
+  settingsMenu[saveIndex].setMenuString("SAVE"); //In case there was an asterisk
+  myDisplay.refreshScreen();
+  delay(400);
+  settingsMenu[loadIndex].setMenuString("LOAD");
+  myDisplay.refreshScreen();
+
+}
+
+
+void updateSAVE(){
+
+  //Assumes all values are at start of settingsMenu
+  byte diffs=0;
+  for (byte ii=0; ii<lengthValues; ii++){
+    if (settingsMenu[ii].value != values[ii]){
+      diffs++;
+      break;
+    }
+  }
+  
+  if (diffs){
+    settingsMenu[saveIndex].setMenuString("SAVE*");
+  } else {
+    settingsMenu[saveIndex].setMenuString("SAVE");
+  }
+
+}
