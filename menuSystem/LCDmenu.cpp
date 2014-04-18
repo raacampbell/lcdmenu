@@ -157,7 +157,7 @@ long menuDisplay::poll(){
      }
     }
  
-    //Only updating the screen if the value has changed is neater. The value will not "flash"
+    //Only update the screen if the value has changed. 
     if (currentMenu[menuRow].value != currentMenu[menuRow].lastValue){
       updateRowValue(menuRow);
     } 
