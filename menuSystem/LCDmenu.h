@@ -39,12 +39,17 @@ class Menu
     void setVars(byte lcdRows, byte lcdCols);
     byte menuStringLength();
 
+    void setValue(short VAL);
+    void setMax(short VAL);
+    void setMin(short VAL);
+    void setMenuString(String menuStr);
+
   private:
-    byte _lcdRows;  //character rows on the LCD display
-    byte _lcdCols;  //character columns on the LCD display
-    short _minVal; //minimum allowable value 
-    short _maxVal; //maximum allowable value
-    bool _wrap;   //if 1 we wrap from min to max value
+    byte _lcdRows;   //character rows on the LCD display
+    byte _lcdCols;   //character columns on the LCD display
+    short _minVal;   //minimum allowable value 
+    short _maxVal;   //maximum allowable value
+    bool _wrap;      //if 1 we wrap from min to max value
     String _menuString; //The menu string itself
 };
 

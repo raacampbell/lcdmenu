@@ -417,3 +417,21 @@ byte Menu::menuStringLength(){
   return menuString().length()+1;
 }
 
+
+
+void Menu::setValue(short VAL){
+  value=VAL;
+}
+
+void Menu::setMax(short VAL){
+  _maxVal=VAL;
+}
+
+void Menu::setMin(short VAL){
+  _minVal=VAL;
+}
+
+
+void Menu::setMenuString(String menuString){
+  _menuString=menuString;
+}
