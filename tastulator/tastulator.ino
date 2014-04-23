@@ -10,6 +10,7 @@
 #include "LiquidCrystal.h"
 #include "LCDmenu.h"
 #include <avr/eeprom.h> //http://playground.arduino.cc/Code/EEPROMWriteAnything
+#include <Servo.h> 
 
 
 static LiquidCrystal this_lcd(7, 8, 9, 10, 11, 12); //Edit this line for you wiring settings
@@ -34,9 +35,6 @@ menuDisplay myDisplay(&this_lcd,lcdRows,lcdCols,tStickButton,tStickXPin,tStickYP
 //The first class has 7 rows and the second has three rows. 
 const int settingsMenuLength=8; //The number of rows in the menu
 Menu settingsMenu[settingsMenuLength];
-byte saveIndex=5; //Index of row containing "SAVE" menu
-byte loadIndex=6; //Index of row containing "LOAD" menu
-
 
 const int controlMenuLength=4;
 Menu controlMenu[controlMenuLength]; //Define another menu to link to as an example
@@ -49,14 +47,39 @@ Menu statusMenu[statusMenuLength]; //Define another menu to link to as an exampl
 const byte lengthValues=5;
 short values[lengthValues]={80,70,3,30,4}; //Default values. 
 
+//Create pointers to menu entries we will need to access at run-time
+Menu* pZERO_ANG   = &settingsMenu[2];
+Menu* pDELTA_ANG  = &settingsMenu[3];
+Menu* pNTASTES = &settingsMenu[4];
+Menu* pSAVE = &settingsMenu[5];
+Menu* pLOAD = &settingsMenu[6];
 
+
+Menu* pSELECT_TASTE = &controlMenu[0]; 
+Menu* pSERVO_ANG    = &controlMenu[1]; 
+
+Menu* pCUR_TASTE = &statusMenu[0]; 
+Menu* pCUR_ANGLE = &statusMenu[1];
+Menu* pCUR_POS   = &statusMenu[2];
+
+
+
+//Motor pins
+const byte servoPin=3;
+const byte actuatorPin=5;
+Servo myservo;  
+
+
+//These will need to be dealt with
 short currentTaste=1;
 short currentPos=40;
+
 
 
 void setup() {
 
   Serial.begin(9600);
+  myservo.attach(servoPin); 
 
   //Define the settings menu, which is an array of class Menu. The order 
   //of the input arguments is: 
@@ -70,8 +93,8 @@ void setup() {
   settingsMenu[2].setNumericMenu(values[2],  1,  90, 0, "Taste zero ang:");
   settingsMenu[3].setNumericMenu(values[3], 5,  45, 1, "dAngle:");
   settingsMenu[4].setNumericMenu(values[4], 1,  10, 1, "#Tastes:");
-  settingsMenu[saveIndex].setActionMenu("SAVE",save);
-  settingsMenu[loadIndex].setActionMenu("LOAD",load);
+  settingsMenu[5].setActionMenu("SAVE",save);
+  settingsMenu[6].setActionMenu("LOAD",load);
   settingsMenu[7].setActionMenu("BACK",toStatusMenu); //executes toMainMenu() when button is pressed
 
   
@@ -96,7 +119,7 @@ void setup() {
 
 
 void loop() {
-  static short lastVal=myDisplay.getValue(); 
+  static short lastVal=myDisplay.getValue(); //The last value of the current line
 
   //wait-without-delay counters for listening to the thumbstick. 
   static long varInterval=25; 
@@ -114,11 +137,33 @@ void loop() {
       updateSAVE();
       myDisplay.refreshScreen();
     }
-
     //Update the status menu
-    updateFixedMenu(&statusMenu[0],controlMenu[0].value);
-    updateFixedMenu(&statusMenu[1],controlMenu[1].value);
+    updateFixedMenu(pCUR_TASTE,pSELECT_TASTE->value);
+    updateFixedMenu(pCUR_POS,pSERVO_ANG->value);
   } //if (currentVarMillis 
+
+
+  //If the user modifies the control settings for current taste then we need to act on this
+  //Some settings potentially conflict (e.g. select taste and servo angle) so we want the
+  //most recently modified number to take precedence and to modify the other number. 
+  static long controlTaste = pSELECT_TASTE->value;
+  static long controlAngle = pSERVO_ANG->value;
+
+  if (controlTaste != pSELECT_TASTE->value){
+    pSERVO_ANG->setValue(taste2angle(pSELECT_TASTE->value));
+    controlTaste=pSELECT_TASTE->value;
+    controlAngle = pSERVO_ANG->value;
+    myDisplay.refreshScreen();
+    myservo.write(pSERVO_ANG->value); 
+  }
+
+ if (controlAngle != pSERVO_ANG->value){
+    pSELECT_TASTE->setValue(angle2taste(pSERVO_ANG->value));
+    controlAngle = pSERVO_ANG->value;
+    controlTaste = pSELECT_TASTE->value;
+    myDisplay.refreshScreen();
+    myservo.write(pSERVO_ANG->value); 
+  }
 
 } //function loop
 
@@ -164,7 +209,7 @@ void save(){
     values[ii]=settingsMenu[ii].value;
   }
   eeprom_write_block((const void*)&values, (void*)0, sizeof(values));
-  settingsMenu[saveIndex].setMenuString("SAVE"); //In case there was an asterisk
+  pSAVE->setMenuString("SAVE"); //In case there was an asterisk
   myDisplay.refreshScreen();
 }
 
@@ -179,11 +224,12 @@ void load(){
   
   //Provide a visual indicator that we've loaded the menu
   //(side effect of refreshing screen with new values)
-  settingsMenu[loadIndex].setMenuString("");
-  settingsMenu[saveIndex].setMenuString("SAVE"); //In case there was an asterisk
+  //settingsMenu[loadIndex].setMenuString("");
+  pLOAD->setMenuString("");
+  pSAVE->setMenuString("SAVE"); //In case there was an asterisk
   myDisplay.refreshScreen();
   delay(250);
-  settingsMenu[loadIndex].setMenuString("LOAD");
+  pLOAD->setMenuString("LOAD");
   myDisplay.refreshScreen();
 
 }
@@ -203,10 +249,20 @@ void updateSAVE(){
   }
   
   if (diffs){
-    settingsMenu[saveIndex].setMenuString("SAVE*");
+    pSAVE->setMenuString("SAVE*");
   } else {
-    settingsMenu[saveIndex].setMenuString("SAVE");
+    pSAVE->setMenuString("SAVE");
   }
 
 }  
 
+
+//Functions to convert back and forth between tastes and angles
+long angle2taste(long angle){
+  return round((angle-pZERO_ANG->value)/pDELTA_ANG->value);
+}
+
+long taste2angle(long taste){
+  return (taste*pDELTA_ANG->value)+pZERO_ANG->value;
+
+}
