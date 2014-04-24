@@ -45,9 +45,11 @@ Menu statusMenu[statusMenuLength]; //Define another menu to link to as an exampl
 
 //We will have the ability to load the values of settingsMenu from the EEPROM
 const byte lengthValues=6;
-short values[lengthValues]={80,70,3,30,4,0}; //Default values. 
+short values[lengthValues]={85,70,14,45,4,0}; //Default values. 
 
 //Create pointers to menu entries we will need to access at run-time
+Menu* pEXTEND   = &settingsMenu[0];
+Menu* pRETRACT  = &settingsMenu[1];
 Menu* pZERO_ANG   = &settingsMenu[2];
 Menu* pDELTA_ANG  = &settingsMenu[3];
 Menu* pNTASTES  = &settingsMenu[4];
@@ -72,8 +74,8 @@ const byte actuatorPin=5;
 Servo myServo;  
 
 //Binary inputs for control via a NIDAQ 
-const byte IN1=6; //Binary input 1
-const byte IN2=4; //Binary input 2
+const byte IN1=6; //Binary input 1 (high bit)
+const byte IN2=4; //Binary input 2 (low bit)
 const byte ACT=2; //Extend/Retract 
 
 //These will need to be dealt with
@@ -81,6 +83,10 @@ short currentTaste=1;
 short currentPos=40;
 
 
+//Maximum and minimum parameters
+const short servoMaxAngle=175;
+const short actuatorMax=200;
+const short actuatorMin=10;
 
 void setup() {
 
@@ -102,8 +108,8 @@ void setup() {
   // 3. maximum value [short]
   // 4. wrap or not [bool]
   // 5. name of row printed to LCD display [String]
-  settingsMenu[0].setNumericMenu(values[0], 2, 178, 0, "Extended pos:");
-  settingsMenu[1].setNumericMenu(values[1], 2, 178, 0, "Retracted pos:");
+  settingsMenu[0].setNumericMenu(values[0], actuatorMin, actuatorMax, 0, "Extended pos:");
+  settingsMenu[1].setNumericMenu(values[1], actuatorMin, actuatorMax, 0, "Retracted pos:");
   settingsMenu[2].setNumericMenu(values[2],  1, 90, 0, "Taste zero ang:");
   settingsMenu[3].setNumericMenu(values[3], 5,  45, 1, "dAngle:");
   settingsMenu[4].setNumericMenu(values[4], 1,  10, 1, "#Tastes:");
@@ -115,8 +121,8 @@ void setup() {
   
   //Define the control menu
   controlMenu[0].setNumericMenu( 4, 1,  10, 0, "Select Taste:");
-  controlMenu[1].setNumericMenu( 4, 3,  150, 0, "Servo angle:");
-  controlMenu[2].setNumericMenu(40, 1, 178, 1, "Actuator Pos:");
+  controlMenu[1].setNumericMenu( 4, 1, servoMaxAngle, 0, "Servo angle:");
+  controlMenu[2].setNumericMenu(40, actuatorMin, actuatorMax, 0, "Actuator Pos:");
   controlMenu[3].setActionMenu("BACK",toStatusMenu); //executes toSettingsMenu() when button is pressed
   
   //Define the status menu
@@ -133,6 +139,9 @@ void setup() {
 
 
 
+
+
+//MAIN LOOP------------------------------------------------------------
 void loop() {
   static short lastVal=myDisplay.getValue(); //The last value of the current line
 
@@ -140,6 +149,7 @@ void loop() {
   static long varInterval=25; 
   static unsigned long currentVarMillis;
   static long previousVarMillis=0;
+
 
   currentVarMillis=millis();
   if (currentVarMillis - previousVarMillis > varInterval) {  
@@ -187,6 +197,33 @@ void loop() {
   analogWrite(actuatorPin,actuatorPos);
   actuatorPos = pACTUATOR_POS->value;
  }
+
+
+  // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+  //Execute command from NIDAQ if this is being requested by the user
+  if (pNIDAQ_IN->value){
+    short NIDAQ_taste = digitalRead(IN1)<<1 | digitalRead(IN2);
+    short angle=taste2angle(NIDAQ_taste);
+
+    myServo.write(angle);
+    
+    if (digitalRead(ACT)){
+      analogWrite(actuatorPin,pEXTEND->value);
+      actuatorPos=pEXTEND->value;
+      pACTUATOR_POS->setValue(pEXTEND->value);
+    } else {
+      analogWrite(actuatorPin,pRETRACT->value);
+      actuatorPos=pEXTEND->value;
+      pACTUATOR_POS->setValue(pEXTEND->value);
+    }
+
+    //Now update the servo control settings, so the menu control menu
+    //reflects the choices made here
+    controlTaste=NIDAQ_taste;
+    pSELECT_TASTE->setValue(NIDAQ_taste);
+
+  }
+
 } //function loop
 
 
@@ -289,6 +326,11 @@ short angle2taste(short angle){
 }
 
 short taste2angle(short taste){
-  return (taste*pDELTA_ANG->value)+pZERO_ANG->value;
+  short out= (taste-1)*pDELTA_ANG->value+pZERO_ANG->value;
+  if (out>servoMaxAngle){
+    out=servoMaxAngle;
+  }
 
+  return out;
 }
+
