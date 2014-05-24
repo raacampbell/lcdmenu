@@ -200,9 +200,10 @@ void loop() {
 
 
   // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-  //Execute command from NIDAQ if this is being requested by the user
+  //Execute command from NIDAQ if the user has enabled this option
   if (pNIDAQ_IN->value){
     short NIDAQ_taste = digitalRead(IN1)<<1 | digitalRead(IN2);
+    NIDAQ_taste++;
     short angle=taste2angle(NIDAQ_taste);
 
     myServo.write(angle);
@@ -221,7 +222,6 @@ void loop() {
     //reflects the choices made here
     controlTaste=NIDAQ_taste;
     pSELECT_TASTE->setValue(NIDAQ_taste);
-
   }
 
 } //function loop
