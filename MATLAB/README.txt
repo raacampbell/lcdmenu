@@ -1,0 +1,1 @@
+Example of how to control the taste stimulator via MATLAB using an NI USB device.
