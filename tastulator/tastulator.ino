@@ -165,6 +165,7 @@ void loop() {
     //Update the status menu
     updateFixedMenu(pCUR_TASTE,pSELECT_TASTE->value);
     updateFixedMenu(pCUR_ANGLE,pSERVO_ANG->value);
+    myDisplay.refreshScreen();
 
      
   } //if (currentVarMillis 
@@ -222,6 +223,8 @@ void loop() {
     //reflects the choices made here
     controlTaste=NIDAQ_taste;
     pSELECT_TASTE->setValue(NIDAQ_taste);
+    pSERVO_ANG->setValue(taste2angle(controlTaste));
+
   }
 
 } //function loop
